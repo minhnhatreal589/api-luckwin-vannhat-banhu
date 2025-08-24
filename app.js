@@ -1,20 +1,20 @@
-Const express = require('express');
+const express = require('express');
 const axios = require('axios');
-const fs = require('fs').promises; // Use promises for async file operations
+const fs = require('fs').promises;
 const {
     stDev
-} = require('simple-statistics'); // For standard deviation
+} = require('simple-statistics');
 
 const app = express();
 app.use(express.json());
 
-// --- CONFIGURATION ---
-const SOURCE_API_URL = "https://1.bot/GetNewLottery/LT_Taixiu"; // Updated API URL
+// --- CẤU HÌNH ---
+const SOURCE_API_URL = "https://1.bot/GetNewLottery/LT_Taixiu";
 const HISTORY_FILE = "history_full.json";
 const PATTERNS_FILE = "learned_patterns_full.json";
 const STATS_FILE = "stats_full.json";
 
-// --- HELPER FUNCTIONS ---
+// --- HÀM HỖ TRỢ ---
 
 async function loadData(filename, defaultData) {
     try {
@@ -37,7 +37,6 @@ function calculateResult(opencodeStr) {
     try {
         const dice = opencodeStr.split(',').map(Number);
         const total = dice.reduce((sum, d) => sum + d, 0);
-        // Corrected logic for Tài/Xỉu based on your prompt (3-10 is Xỉu, 11-18 is Tài)
         const result = (total >= 11 && total <= 18) ? "Tài" : "Xỉu";
         return {
             total,
@@ -54,9 +53,8 @@ function calculateResult(opencodeStr) {
     }
 }
 
-// --- AI BRAIN - INTEGRATING ORIGINAL LOGICS & 24 LOGICS FROM SUNWIN.JS ---
+// --- LOGIC DỰ ĐOÁN (AI BRAIN) ---
 
-// --- ORIGINAL LOGICS (ADJUSTED FOR FIT) ---
 function logicGocBet(history) {
     if (history.length >= 3 && history[0].ket_qua === history[1].ket_qua && history[1].ket_qua === history[2].ket_qua) {
         return {
@@ -100,7 +98,6 @@ function logicGocBeBetDai(history) {
     };
 }
 
-// --- 24 LOGICS FROM SUNWIN.JS (PORTED TO JAVASCRIPT) ---
 function predictLogic1(history) {
     if (!history || history.length < 10) return null;
     const lastSession = history[0];
@@ -115,7 +112,6 @@ function predictLogic2(history) {
     let thuanScore = 0;
     let nghichScore = 0;
     const analysisWindow = Math.min(history.length, 60);
-
     for (let i = 0; i < analysisWindow; i++) {
         const session = history[i];
         const isEvenSid = parseInt(session.phien) % 2 === 0;
@@ -127,7 +123,6 @@ function predictLogic2(history) {
             nghichScore += weight;
         }
     }
-
     const currentSessionIsEven = nextSessionId % 2 === 0;
     if (thuanScore > nghichScore * 1.15) return currentSessionIsEven ? "Xỉu" : "Tài";
     if (nghichScore > thuanScore * 1.15) return currentSessionIsEven ? "Tài" : "Xỉu";
@@ -140,7 +135,6 @@ function predictLogic3(history) {
     const lastXTotals = history.slice(0, analysisWindow).map(s => s.tong);
     const average = lastXTotals.reduce((sum, val) => sum + val, 0) / analysisWindow;
     const stdDevValue = lastXTotals.length >= 2 ? stDev(lastXTotals) : 0;
-
     if (average < 10.5 - (0.8 * stdDevValue)) return "Xỉu";
     if (average > 10.5 + (0.8 * stdDevValue)) return "Tài";
     return null;
@@ -180,7 +174,6 @@ function predictLogic5(history) {
         const weight = 1.0 - (i / analysisWindow) * 0.8;
         sumCounts[total] = (sumCounts[total] || 0) + weight;
     }
-
     if (Object.keys(sumCounts).length === 0) return null;
     const mostFrequentSum = parseInt(Object.keys(sumCounts).reduce((a, b) => sumCounts[a] > sumCounts[b] ? a : b));
     if (mostFrequentSum <= 10) return "Xỉu";
@@ -188,7 +181,7 @@ function predictLogic5(history) {
     return null;
 }
 
-function predictLogic7(history) { // Streak Following
+function predictLogic7(history) {
     if (history.length < 4) return null;
     const recentResults = history.slice(0, 4).map(s => s.ket_qua);
     const allSame = recentResults.every(val => val === recentResults[0]);
@@ -198,7 +191,7 @@ function predictLogic7(history) { // Streak Following
     return null;
 }
 
-function predictLogic8(history) { // Mean Reversion
+function predictLogic8(history) {
     if (history.length < 31) return null;
     const longTermTotals = history.slice(1, 31).map(s => s.tong);
     const longTermAverage = longTermTotals.reduce((sum, val) => sum + val, 0) / longTermTotals.length;
@@ -208,7 +201,7 @@ function predictLogic8(history) { // Mean Reversion
     return null;
 }
 
-function predictLogic11(history) { // Reversal Patterns
+function predictLogic11(history) {
     if (history.length < 5) return null;
     const results = history.slice(0, 5).reverse().map(h => h.ket_qua[0]).join("");
     const patterns = {
@@ -225,7 +218,7 @@ function predictLogic11(history) { // Reversal Patterns
     return null;
 }
 
-function predictLogic17(history) { // Anomaly Detection
+function predictLogic17(history) {
     if (history.length < 100) return null;
     const totals = history.slice(0, 100).map(s => s.tong);
     const mean = totals.reduce((sum, val) => sum + val, 0) / totals.length;
@@ -237,7 +230,7 @@ function predictLogic17(history) { // Anomaly Detection
     return null;
 }
 
-function predictLogic21(history) { // Multi-Window
+function predictLogic21(history) {
     if (history.length < 20) return null;
     const patternArr = history.map(h => h.ket_qua[0]);
     const votes = {
@@ -258,63 +251,6 @@ function predictLogic21(history) { // Multi-Window
     return null;
 }
 
-function predictLogic6(h) {
-    return null;
-}
-
-function predictLogic9(h) {
-    return null;
-}
-
-function predictLogic10(h) {
-    return null;
-}
-
-function predictLogic12(h) {
-    return null;
-}
-
-function predictLogic13(h) {
-    return null;
-}
-
-function predictLogic14(h) {
-    return null;
-}
-
-function predictLogic15(h) {
-    return null;
-}
-
-function predictLogic16(h) {
-    return null;
-}
-
-function predictLogic18(h) {
-    return null;
-}
-
-function predictLogic19(h) {
-    return null;
-}
-
-function predictLogic20(h) {
-    return null;
-}
-
-function predictLogic22(h) {
-    return null;
-}
-
-function predictLogic23(h) {
-    return null;
-}
-
-function predictLogic24(h) {
-    return null;
-}
-
-// --- SUPER PREDICTION (META-LOGIC) ---
 function getSuperPrediction(history, learnedPatterns) {
     if (history.length < 10) {
         return {
@@ -324,55 +260,49 @@ function getSuperPrediction(history, learnedPatterns) {
         };
     }
 
-    const allLogics = [
-        // Original logics
-        {
-            func: logicGocBet,
-            weight: 1.2,
-            type: "goc"
-        }, {
-            func: logicGoc11,
-            weight: 1.2,
-            type: "goc"
-        }, {
-            func: logicGocBeBetDai,
-            weight: 1.3,
-            type: "goc"
-        },
-        // Sunwin Logics
-        {
-            func: predictLogic1,
-            weight: 0.8
-        }, {
-            func: predictLogic2,
-            weight: 1.1
-        }, {
-            func: predictLogic3,
-            weight: 0.9
-        }, {
-            func: predictLogic4,
-            weight: 1.5
-        }, {
-            func: predictLogic5,
-            weight: 0.9
-        }, {
-            func: predictLogic7,
-            weight: 1.2
-        }, {
-            func: predictLogic8,
-            weight: 1.3
-        }, {
-            func: predictLogic11,
-            weight: 1.4
-        }, {
-            func: predictLogic17,
-            weight: 1.3
-        }, {
-            func: predictLogic21,
-            weight: 1.5
-        },
-        // Add other logics here...
-    ];
+    const allLogics = [{
+        func: logicGocBet,
+        weight: 1.2,
+        type: "goc"
+    }, {
+        func: logicGoc11,
+        weight: 1.2,
+        type: "goc"
+    }, {
+        func: logicGocBeBetDai,
+        weight: 1.3,
+        type: "goc"
+    }, {
+        func: predictLogic1,
+        weight: 0.8
+    }, {
+        func: predictLogic2,
+        weight: 1.1
+    }, {
+        func: predictLogic3,
+        weight: 0.9
+    }, {
+        func: predictLogic4,
+        weight: 1.5
+    }, {
+        func: predictLogic5,
+        weight: 0.9
+    }, {
+        func: predictLogic7,
+        weight: 1.2
+    }, {
+        func: predictLogic8,
+        weight: 1.3
+    }, {
+        func: predictLogic11,
+        weight: 1.4
+    }, {
+        func: predictLogic17,
+        weight: 1.3
+    }, {
+        func: predictLogic21,
+        weight: 1.5
+    }, ];
 
     const votes = {
         "Tài": 0,
@@ -383,7 +313,6 @@ function getSuperPrediction(history, learnedPatterns) {
         "Xỉu": []
     };
 
-    // Run all logics and gather votes
     for (const {
             func: logicFunc,
             weight,
@@ -392,7 +321,6 @@ function getSuperPrediction(history, learnedPatterns) {
         try {
             let prediction = null;
             let reasonText = null;
-
             if (type === "goc") {
                 const {
                     prediction: p,
@@ -404,7 +332,6 @@ function getSuperPrediction(history, learnedPatterns) {
                 prediction = logicFunc(history);
                 reasonText = `Sunwin Logic: ${logicFunc.name}`;
             }
-
             if (prediction) {
                 votes[prediction] += weight;
                 reasons[prediction].push(reasonText);
@@ -414,19 +341,17 @@ function getSuperPrediction(history, learnedPatterns) {
         }
     }
 
-    // Learned pattern logic (highest priority)
     const historyChars = history.map(h => h.ket_qua[0]);
     for (let length = Math.min(historyChars.length, 6); length > 3; length--) {
         const currentPattern = historyChars.slice(0, length).join("");
         if (learnedPatterns[currentPattern]) {
             const prediction = learnedPatterns[currentPattern];
-            votes[prediction] += 2.0; // Very high weight
+            votes[prediction] += 2.0;
             reasons[prediction].push(`AI nhận diện mẫu cầu đã học '${currentPattern}'`);
             break;
         }
     }
 
-    // Final decision
     let finalPrediction = null;
     let contributingReasons = [];
 
@@ -439,7 +364,7 @@ function getSuperPrediction(history, learnedPatterns) {
     } else if (votes["Xỉu"] > votes["Tài"]) {
         finalPrediction = "Xỉu";
         contributingReasons = reasons["Xỉu"];
-    } else { // Equal votes
+    } else {
         finalPrediction = parseInt(history[0].phien) % 2 === 0 ? "Tài" : "Xỉu";
         contributingReasons = ["Các logic xung đột, dự đoán theo phiên chẵn/lẻ."];
     }
@@ -455,7 +380,7 @@ function getSuperPrediction(history, learnedPatterns) {
     };
 }
 
-// --- API ENDPOINTS ---
+// --- ĐIỂM CUỐI API ---
 
 app.get('/api/luckwin/vannhat', async (req, res) => {
     let sourceData;
@@ -463,7 +388,6 @@ app.get('/api/luckwin/vannhat', async (req, res) => {
         const response = await axios.get(SOURCE_API_URL, {
             timeout: 10000
         });
-        // Check for valid response structure
         if (response.data && response.data.state === 1 && response.data.data) {
             sourceData = response.data.data;
         } else {
@@ -491,7 +415,6 @@ app.get('/api/luckwin/vannhat', async (req, res) => {
         dice: xuc_xac_list
     } = calculateResult(sourceData.OpenCode);
 
-    // Update statistics
     if (stats.last_prediction && stats.last_prediction.phien_du_doan === phien) {
         if (stats.last_prediction.du_doan === ket_qua) {
             stats.so_lan_dung += 1;
@@ -500,7 +423,6 @@ app.get('/api/luckwin/vannhat', async (req, res) => {
         }
     }
 
-    // Only add to history if it's a new session
     const isNewSession = !history.some(h => h.phien === phien);
     if (isNewSession) {
         const newSessionData = {
@@ -511,7 +433,6 @@ app.get('/api/luckwin/vannhat', async (req, res) => {
         };
         history.unshift(newSessionData);
 
-        // Learn new patterns
         const historyChars = history.map(h => h.ket_qua[0]);
         if (historyChars.length > 5) {
             const patternToLearn = historyChars.slice(1, 6).join("");
@@ -525,8 +446,6 @@ app.get('/api/luckwin/vannhat', async (req, res) => {
     }
 
     const currentPatternStr = history.map(h => h.ket_qua[0]).slice(0, 30).join("");
-
-    // Get prediction
     const predictionResult = getSuperPrediction(history, learnedPatterns);
     const phienTiepTheo = String(parseInt(phien) + 1);
 
@@ -565,7 +484,6 @@ app.get('/patterns', async (req, res) => {
     res.json(patterns);
 });
 
-// Start the server
 const PORT = process.env.PORT || 2222;
 app.listen(PORT, () => {
     console.log(`Server is running on port ${PORT}`);
